@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# microbs
+.env
+.secrets/
+.state
+config.yaml
+dist/
+
+# node.js
+node_modules/
+npm-debug.log*

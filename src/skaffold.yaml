@@ -1,0 +1,24 @@
+apiVersion: skaffold/v2beta27
+kind: Config
+build:
+  tagPolicy:
+    customTemplate:
+      template: "{{.GIT_COMMIT}}"
+      components:
+      - name: GIT_COMMIT
+        gitCommit: {}
+
+
+####  Main  ####################################################################
+
+profiles:
+- name: main
+  build:
+    artifacts:
+    - image: microbs-grafana-agent
+      context: services/grafana-agent
+  deploy:
+    kubectl:
+      manifests:
+      - ./services/grafana-agent/k8s/*.yaml
+      - ./services/synthetics-agent/k8s/*.yaml
