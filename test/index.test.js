@@ -83,4 +83,8 @@ describe('microbs plugin standards', () => {
     const pkgLock = utils.loadJson(path.join(process.cwd(), 'package-lock.json'))
     expect(pkg.version).toBe(pkgLock.version)
   })
+  
+  test('require @microbs.io/core', () => {
+    expect(require('@microbs.io/core')).toBeTruthy()
+  })
 })
