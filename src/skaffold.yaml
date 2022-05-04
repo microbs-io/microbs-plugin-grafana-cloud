@@ -16,7 +16,7 @@ profiles:
   build:
     artifacts:
     - image: microbs-grafana-agent
-      context: services/grafana-agent
+      context: ./services/grafana-agent
   deploy:
     kubectl:
       manifests:

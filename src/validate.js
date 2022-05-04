@@ -35,7 +35,6 @@ const validateConfig = () => {
       })
     }
   }
-
   if (!hasErrors) {
     return [{
       success: true,
