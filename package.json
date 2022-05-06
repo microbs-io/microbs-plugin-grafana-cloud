@@ -1,6 +1,6 @@
 {
   "name": "@microbs.io/plugin-grafana-cloud",
-  "version": "0.1.1-alpha",
+  "version": "0.1.2-alpha",
   "description": "microbs plugin - grafana-cloud",
   "license": "Apache-2.0",
   "url": "https://microbs.io/docs/plugins/observability/grafana-cloud/",
@@ -29,7 +29,7 @@
     "lodash": "^4.17.21"
   },
   "peerDependencies": {
-    "@microbs.io/core": "^0.1.8-alpha"
+    "@microbs.io/core": "^0.1.12-alpha"
   },
   "devDependencies": {
     "jest": "^26.6.3"

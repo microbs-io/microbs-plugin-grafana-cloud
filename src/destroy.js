@@ -14,7 +14,7 @@ const validate = () => {
   ]
   if (!utils.configHas(requiredFields)) {
     logger.error()
-    logger.error(`You must set these variables in ${config.get('filepath')} to destroy Grafana Cloud:`)
+    logger.error(`You must set these variables in ${config.get('path.config')} to destroy Grafana Cloud:`)
     logger.error()
     logger.error(requiredFields)
     process.exit(1)

@@ -38,7 +38,7 @@ const createAlertRules = async () => {
 
   // Load and parse alert rules
   const rules = {}
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'alerts', 'rules', '*.json')).forEach((filename) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'alerts', 'rules', '*.json')).forEach((filename) => {
     rules[filename] = utils.loadJson(filename)
   })
   for (var filename in rules) {
@@ -114,7 +114,7 @@ const destroyAlertRules = async () => {
 
   // Load and parse alert rules
   const rules = {}
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'alerts', 'rules', '*.json')).forEach((filename) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'alerts', 'rules', '*.json')).forEach((filename) => {
     rules[filename] = utils.loadJson(filename)
   })
   for (var filename in rules) {
@@ -145,20 +145,20 @@ const createAlertContactPoints = async () => {
 
   // Load and parse templates
   const templates = {}
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'alerts', 'templates', '*.txt')).forEach((filename) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'alerts', 'templates', '*.txt')).forEach((filename) => {
     let name = path.parse(filename).name
     templates[name] = utils.loadFile(filename)
   })
 
   // Load and parse receivers
   const receivers = []
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'alerts', 'receivers', '*.json')).forEach((filename) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'alerts', 'receivers', '*.json')).forEach((filename) => {
     receivers.push(utils.loadTemplateJson(filename, config.get()))
   })
 
   // Load and parse route for the configured alerts plugin
   const routes = []
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'alerts', 'routes', '*.json')).forEach((filename) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'alerts', 'routes', '*.json')).forEach((filename) => {
     let name = path.parse(filename).name
     if (name == config.get('deployment.plugins.alerts'))
       routes.push(utils.loadJson(filename, config.get()))
@@ -353,7 +353,7 @@ const createSyntheticMonitoringCheck = async (filepath) => {
  * Create synthetic monitoring checks.
  */
 const createSyntheticMonitoringChecks = async () => {
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
     await createSyntheticMonitoringCheck(filepath)
   })
 }
@@ -399,7 +399,7 @@ const destroySyntheticMonitoringCheck = async (filepath, checks) => {
  */
 const destroySyntheticMonitoringChecks = async () => {
   const checks = await getSyntheticMonitoringChecks()
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
     await destroySyntheticMonitoringCheck(filepath, checks)
   })
 }
@@ -410,7 +410,7 @@ const destroySyntheticMonitoringChecks = async () => {
  */
 const after_setup_app = async () => {
   await createSyntheticMonitoringChecks()
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'dashboards', '*.json')).forEach(async (filepath) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'dashboards', '*.json')).forEach(async (filepath) => {
     await createDashboard(filepath)
   })
 }
@@ -421,7 +421,7 @@ const after_setup_app = async () => {
  * monitoring checks.
  */
 const after_destroy_app = async () => {
-  glob.sync(path.join(context.get('homepath'), 'apps', config.get('deployment.app'), 'plugins', 'grafana-cloud', 'dashboards', '*.json')).forEach(async (filepath) => {
+  glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'dashboards', '*.json')).forEach(async (filepath) => {
     await destroyDashboard(filepath)
   })
   await destroySyntheticMonitoringChecks()

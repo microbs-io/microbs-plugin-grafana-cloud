@@ -13,9 +13,7 @@ const { config, context, state } = require('@microbs.io/core')
 /**
  * Absolute path to the directory of this plugin.
  */
-module.exports.pluginHome = () => {
-  return path.join(context.get('homepath'), 'cli', 'src', 'plugins', 'observability', 'grafana-cloud')
-}
+module.exports.pluginHome = () => context.get('path.plugins.observability')
 
 /**
  * Shorthand for setting Grafana Cloud API headers.

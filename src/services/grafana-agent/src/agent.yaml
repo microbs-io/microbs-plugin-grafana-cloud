@@ -125,7 +125,7 @@ logs:
       - action: labeldrop
         regex: filename
     - pipeline_stages:
-      - docker:
+      - cri:
       job_name: kubernetes-pods-static
       kubernetes_sd_configs:
       - role: pod
@@ -169,7 +169,7 @@ logs:
         - __meta_kubernetes_pod_container_name
         target_label: __path__
     - pipeline_stages:
-      - docker:
+      - cri:
       job_name: kubernetes-pods-static
       kubernetes_sd_configs:
       - role: pod
@@ -218,7 +218,7 @@ traces:
       roots: true
     scrape_configs:
     - pipeline_stages:
-      - docker:
+      - cri:
       job_name: kubernetes-pods-name
       kubernetes_sd_configs:
       - role: pod
