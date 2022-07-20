@@ -300,7 +300,7 @@ const destroyDashboard = async (filepath) => {
 }
 
 const getSyntheticMonitoringChecks = async () => {
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/21/sm/check/list`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/list`
   var response
   try {
     response = await utils.http({
@@ -328,7 +328,7 @@ const createSyntheticMonitoringCheck = async (filepath) => {
   const data = utils.loadJson(filepath) 
   delete data.probes
   data.probes = [ state.get('plugins.grafana-cloud.synthetic_monitoring.probe.id') ]
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/21/sm/check/add`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/add`
   var response
   try {
     response = await utils.http({
@@ -374,7 +374,7 @@ const destroySyntheticMonitoringCheck = async (filepath, checks) => {
     logger.info(`...check does not exist: ${filepath}`)
     return
   }
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/21/sm/check/delete/${checkId}`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/delete/${checkId}`
   var response
   try {
     response = await utils.http({

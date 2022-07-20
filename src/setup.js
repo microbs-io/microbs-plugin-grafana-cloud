@@ -28,7 +28,7 @@ const validate = () => {
 }
 
 const getSyntheticMonitoringProbes = async () => {
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/21/sm/probe/list`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/probe/list`
   var response
   try {
     response = await utils.http({
@@ -49,7 +49,7 @@ const getSyntheticMonitoringProbes = async () => {
 const setupSyntheticMonitoringProbe = async () => {
   const probeName = 'Local'
   logger.info(`Creating synthetic monitoring probe: ${probeName}`)
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/21/sm/probe/add`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/probe/add`
   logger.debug(`POST ${url}`)
   const data = {
     name: probeName,
