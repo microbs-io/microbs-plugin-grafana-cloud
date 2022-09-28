@@ -25,7 +25,7 @@ const validateConfig = () => {
     'plugins.grafana-cloud.org_slug',
     'plugins.grafana-cloud.region',
   ]
-  const hasErrors = false
+  var hasErrors = false
   for (var i in requiredAlways) {
     if (!config.get(requiredAlways[i])) {
       hasErrors = true
