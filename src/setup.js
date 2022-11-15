@@ -350,6 +350,50 @@ const setupSyntheticMonitoring = async () => {
   await setupSyntheticMonitoringProbe()
 }
 
+/**
+ * Initialize the Kubernetes Integration
+ */
+const setupKubernetesIntegration = async () => {
+  
+  // Ensure stack is ready
+  var stackExists
+  while (!stackExists) {
+    stackExists = await probe.statusGrafanaCloud()
+    await utils.sleep(1000)
+  }
+  
+  // Setup Kubernetes integration
+  logger.info('Installing Kubernetes integration...')
+  var response
+  try {
+    response = await utils.http({
+      method: 'post',
+      url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/install`,
+      headers: constants.grafanaApiHeaders()
+    })
+  } catch (err) {
+    logger.error(err)
+    return
+  }
+  if (response.status >= 200 && response.status <= 299) {
+    var response
+    try {
+      response = await utils.http({
+        method: 'get',
+        url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/`,
+        headers: constants.grafanaApiHeaders()
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    logger.info('...done.')
+  } else {
+    logger.error('...failure:')
+    logger.error(response.data)
+  }
+}
+
 module.exports = async () => {
   validate()
 
@@ -455,6 +499,9 @@ module.exports = async () => {
       }
     }
   }
+  
+  // Setup Kubernetes integration
+  await setupKubernetesIntegration()
   
   // Setup synthetic monitoring
   await setupSyntheticMonitoring()
