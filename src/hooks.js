@@ -7,6 +7,7 @@ const { config, context, logger, state, utils } = require('@microbs.io/core')
 
 // Plugin packages
 const constants = require('./constants')
+const probe = require('./probe')
 
 /**
  * Create alert rules.
@@ -299,8 +300,9 @@ const destroyDashboard = async (filepath) => {
   }
 }
 
-const getSyntheticMonitoringChecks = async () => {
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/list`
+const getSyntheticMonitoringChecks = async (dataSourceId) => {
+  const proxyId = dataSourceId || await probe.getSyntheticsDataSourceId()
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/${proxyId}/sm/check/list`
   var response
   try {
     response = await utils.http({
@@ -321,14 +323,15 @@ const getSyntheticMonitoringChecks = async () => {
 /**
  * Create synthetic monitoring check.
  */
-const createSyntheticMonitoringCheck = async (filepath) => {
+const createSyntheticMonitoringCheck = async (filepath, dataSourceId) => {
   logger.info(`Creating synthetic monitoring check: ${filepath}`)
 
   // Load and parse synthetic monitoring check from file
   const data = utils.loadJson(filepath) 
   delete data.probes
   data.probes = [ state.get('plugins.grafana-cloud.synthetic_monitoring.probe.id') ]
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/add`
+  const proxyId = dataSourceId || await probe.getSyntheticsDataSourceId()
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/${proxyId}/sm/check/add`
   var response
   try {
     response = await utils.http({
@@ -353,12 +356,13 @@ const createSyntheticMonitoringCheck = async (filepath) => {
  * Create synthetic monitoring checks.
  */
 const createSyntheticMonitoringChecks = async () => {
+  const dataSourceId = await probe.getSyntheticsDataSourceId()
   glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
-    await createSyntheticMonitoringCheck(filepath)
+    await createSyntheticMonitoringCheck(filepath, dataSourceId)
   })
 }
 
-const destroySyntheticMonitoringCheck = async (filepath, checks) => {
+const destroySyntheticMonitoringCheck = async (filepath, checks, dataSourceId) => {
   logger.info(`Removing synthetic monitoring check: ${filepath}`)
   
   // Load and parse synthetic monitoring check from file
@@ -374,7 +378,8 @@ const destroySyntheticMonitoringCheck = async (filepath, checks) => {
     logger.info(`...check does not exist: ${filepath}`)
     return
   }
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/check/delete/${checkId}`
+  const proxyId = dataSourceId || await probe.getSyntheticsDataSourceId()
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/${proxyId}/sm/check/delete/${checkId}`
   var response
   try {
     response = await utils.http({
@@ -398,9 +403,10 @@ const destroySyntheticMonitoringCheck = async (filepath, checks) => {
  * Remove the synthetic monitoring checks.
  */
 const destroySyntheticMonitoringChecks = async () => {
-  const checks = await getSyntheticMonitoringChecks()
+  const dataSourceId = await probe.getSyntheticsDataSourceId()
+  const checks = await getSyntheticMonitoringChecks(dataSourceId)
   glob.sync(path.join(context.get('path.app'), 'plugins', 'grafana-cloud', 'synthetic-monitoring', '*.json')).forEach(async (filepath) => {
-    await destroySyntheticMonitoringCheck(filepath, checks)
+    await destroySyntheticMonitoringCheck(filepath, checks, dataSourceId)
   })
 }
 

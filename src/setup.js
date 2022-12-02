@@ -27,8 +27,9 @@ const validate = () => {
   }
 }
 
-const getSyntheticMonitoringProbes = async () => {
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/probe/list`
+const getSyntheticMonitoringProbes = async (dataSourceId) => {
+  const proxyId = dataSourceId || await probe.getSyntheticsDataSourceId()
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/${proxyId}/sm/probe/list`
   var response
   try {
     response = await utils.http({
@@ -46,10 +47,11 @@ const getSyntheticMonitoringProbes = async () => {
     logger.error('...failed to list synthetic monitoring probes.')
 }
 
-const setupSyntheticMonitoringProbe = async () => {
+const setupSyntheticMonitoringProbe = async (dataSourceId) => {
+  const proxyId = dataSourceId || await probe.getSyntheticsDataSourceId()
   const probeName = 'Local'
   logger.info(`Creating synthetic monitoring probe: ${probeName}`)
-  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/18/sm/probe/add`
+  const url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources/proxy/${proxyId}/sm/probe/add`
   logger.debug(`POST ${url}`)
   const data = {
     name: probeName,
@@ -290,27 +292,33 @@ const setupSyntheticMonitoringPlugin = async () => {
   logger.info('Installing synthetic monitoring plugin...')
   var url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-synthetic-monitoring-app/install`
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: url,
-      headers: constants.grafanaApiHeaders(),
-      data: {
-        stackId: state.get('plugins.grafana-cloud.stack_id'),
-        metricsInstanceId: state.get('plugins.grafana-cloud.prometheus.username'),
-        logsInstanceId: state.get('plugins.grafana-cloud.loki.username')
-      }
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200 && response.data && response.data.accessToken) {
-    logger.info('...done.')
-    return response.data.accessToken
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'post',
+        url: url,
+        headers: constants.grafanaApiHeaders(),
+        data: {
+          stackId: state.get('plugins.grafana-cloud.stack_id'),
+          metricsInstanceId: state.get('plugins.grafana-cloud.prometheus.username'),
+          logsInstanceId: state.get('plugins.grafana-cloud.loki.username')
+        }
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    if (response.status == 404 || response.status == 503) {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200 && response.data && response.data.accessToken) {
+      logger.info('...done.')
+      return response.data.accessToken
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+      return
+    }
   }
 }
 
@@ -320,11 +328,7 @@ const setupSyntheticMonitoringPlugin = async () => {
 const setupSyntheticMonitoring = async () => {
   
   // Ensure stack is ready
-  var stackExists
-  while (!stackExists) {
-    stackExists = await probe.statusGrafanaCloud()
-    await utils.sleep(1000)
-  }
+  await probe.waitForGrafanaCloud()
   
   // Setup synthetic monitoring plugin
   var accessToken = await setupSyntheticMonitoringPlugin()
@@ -356,41 +360,43 @@ const setupSyntheticMonitoring = async () => {
 const setupKubernetesIntegration = async () => {
   
   // Ensure stack is ready
-  var stackExists
-  while (!stackExists) {
-    stackExists = await probe.statusGrafanaCloud()
-    await utils.sleep(1000)
-  }
+  await probe.waitForGrafanaCloud()
   
   // Setup Kubernetes integration
   logger.info('Installing Kubernetes integration...')
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/install`,
-      headers: constants.grafanaApiHeaders()
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status >= 200 && response.status <= 299) {
-    var response
+  while (true) {
     try {
       response = await utils.http({
-        method: 'get',
-        url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/`,
+        method: 'post',
+        url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/install`,
         headers: constants.grafanaApiHeaders()
       })
     } catch (err) {
       logger.error(err)
       return
     }
-    logger.info('...done.')
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
+    if (response.status == 404 || response.status == 503) {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status >= 200 && response.status <= 299) {
+      var response
+      try {
+        response = await utils.http({
+          method: 'get',
+          url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/`,
+          headers: constants.grafanaApiHeaders()
+        })
+      } catch (err) {
+        logger.error(err)
+        return
+      }
+      logger.info('...done.')
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+    }
+    break
   }
 }
 
@@ -501,7 +507,7 @@ module.exports = async () => {
   }
   
   // Setup Kubernetes integration
-  await setupKubernetesIntegration()
+  //await setupKubernetesIntegration() // TODO: This won't start until the user authenticates in the UI
   
   // Setup synthetic monitoring
   await setupSyntheticMonitoring()
