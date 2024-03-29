@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sm-agent-1
+  name: grafana-synthetic-monitoring-agent
   namespace: default
 spec:
   minReadySeconds: 10
@@ -10,7 +10,7 @@ spec:
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      name: sm-agent-1
+      name: grafana-synthetic-monitoring-agent
   strategy:
     rollingUpdate:
       maxSurge: 0
@@ -18,11 +18,11 @@ spec:
   template:
     metadata:
       labels:
-        name: sm-agent-1
+        name: grafana-synthetic-monitoring-agent
     spec:
       containers:
       - args:
-        - /usr/local/bin/synthetic-monitoring-agent --api-server-address=${API_SERVER} --api-token=${PLUGINS_GRAFANA_CLOUD_SYNTHETIC_MONITORING_PROBE_TOKEN} --verbose=true
+        - /usr/local/bin/synthetic-monitoring-agent --api-server-address=${API_SERVER} --api-token=${PLUGINS_GRAFANA_CLOUD_SYNTHETIC_MONITORING_PROBE_TOKEN} --listen-address=0.0.0.0:4050 --verbose=true
         command:
         - sh
         - -c
@@ -45,3 +45,7 @@ spec:
           httpGet:
             path: /
             port: 4050
+        resources:
+          requests:
+            cpu: 200m
+            memory: 500Mi

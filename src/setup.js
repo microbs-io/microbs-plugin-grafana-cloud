@@ -69,31 +69,38 @@ const setupSyntheticMonitoringProbe = async (dataSourceId) => {
     deprecated: false
   }
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: url,
-      headers: constants.grafanaApiHeaders(),
-      data: data
-    })
-    if (response.status == 200) {
-      if (response.data && response.data.token && response.data.probe && response.data.probe.id) {
-        state.set('plugins.grafana-cloud.synthetic_monitoring.probe.id', response.data.probe.id)
-        state.set('plugins.grafana-cloud.synthetic_monitoring.probe.token', response.data.token)
-        state.save()
-        logger.info(`...created: ${probeName} [id=${response.data.probe.id}]`)
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'post',
+        url: url,
+        headers: constants.grafanaApiHeaders(),
+        data: data
+      })
+      if (response.status == 503 && response.data.code == 'Loading') {
+        await utils.sleep(1000)
+        continue
+      } else if (response.status == 200) {
+        if (response.data && response.data.token && response.data.probe && response.data.probe.id) {
+          state.set('plugins.grafana-cloud.synthetic_monitoring.probe.id', response.data.probe.id)
+          state.set('plugins.grafana-cloud.synthetic_monitoring.probe.token', response.data.token)
+          state.save()
+          logger.info(`...created: ${probeName} [id=${response.data.probe.id}]`)
+        } else {
+          logger.warn(`...failed to get token for probe: ${probeName}`)
+        }
+        return
       } else {
-        logger.warn(`...failed to get token for probe: ${probeName}`)
+        if (response.data && response.data.msg && response.data.msg.includes('Duplicate'))
+          logger.info(`...exists: ${probeName}`)
+        else
+          logger.info(`...failure: ${probeName}`)
+        return
       }
-    } else {
-      if (response.data && response.data.msg && response.data.msg.includes('Duplicate'))
-        logger.info(`...exists: ${probeName}`)
-      else
-        logger.info(`...failure: ${probeName}`)
+    } catch (err) {
+      logger.error(err)
+      return
     }
-  } catch (err) {
-    logger.error(err)
-    return
   }
 }
 
@@ -101,47 +108,53 @@ const setupSyntheticMonitoringDatasource = async (accessToken, dashboards) => {
   logger.info(`Creating synthetic monitoring datasource...`)
   var url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/datasources`
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: url,
-      headers: constants.grafanaApiHeaders(),
-      data: {
-      	name: 'Synthetic Monitoring',
-      	type: 'synthetic-monitoring-datasource',
-      	access: 'proxy',
-      	isDefault: false,
-      	jsonData: {
-      		apiHost: 'https://synthetic-monitoring-api.grafana.net',
-      		dashboards: dashboards,
-      		initialized: true,
-      		metrics: {
-      			grafanaName: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-prom`,
-      			hostedId: state.get('plugins.grafana-cloud.prometheus.username')
-      		},
-      		logs: {
-      			grafanaName: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-logs`,
-      			hostedId: state.get('plugins.grafana-cloud.loki.username')
-      		}
-      	},
-      	secureJsonData: {
-      		accessToken: accessToken
-      	}
-      }
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200 && response.data && response.data.datasource) {
-    logger.info('...done.')
-    return true
-  } else if (response.status == 409) {
-    logger.info('...exists.')
-    return true
-  } else {
-    logger.error('...failure.')
-    logger.error(response.data)
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'post',
+        url: url,
+        headers: constants.grafanaApiHeaders(),
+        data: {
+          name: 'Synthetic Monitoring',
+          type: 'synthetic-monitoring-datasource',
+          access: 'proxy',
+          isDefault: false,
+          jsonData: {
+            apiHost: 'https://synthetic-monitoring-api.grafana.net',
+            dashboards: dashboards,
+            initialized: true,
+            metrics: {
+              grafanaName: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-prom`,
+              hostedId: state.get('plugins.grafana-cloud.prometheus.username')
+            },
+            logs: {
+              grafanaName: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-logs`,
+              hostedId: state.get('plugins.grafana-cloud.loki.username')
+            }
+          },
+          secureJsonData: {
+            accessToken: accessToken
+          }
+        }
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    if (response.status == 503 && response.data.code == 'Loading') {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200 && response.data && response.data.datasource) {
+      logger.info('...done.')
+      return true
+    } else if (response.status == 409) {
+      logger.info('...exists.')
+      return true
+    } else {
+      logger.error('...failure.')
+      logger.error(response.data)
+      return
+    }
   }
 }
 
@@ -151,22 +164,28 @@ const setupSyntheticMonitoringDashboard = async (dashboardName, folderId) => {
   logger.info(`Getting synthetic monitoring dashboard: ${dashboardName}`)
   var url = `${state.get('plugins.grafana-cloud.grafana.url')}/public/plugins/grafana-synthetic-monitoring-app/dashboards/${dashboardName}.json`
   var response
-  try {
-    response = await utils.http({
-      method: 'get',
-      url: url,
-      headers: constants.grafanaApiHeaders()
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200 && response.data && response.data.uid) {
-    logger.info('...done.')
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
-    return
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'get',
+        url: url,
+        headers: constants.grafanaApiHeaders()
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    if (response.status == 503 && response.data.code == 'Loading') {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200 && response.data && response.data.uid) {
+      logger.info('...done.')
+      break
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+      return
+    }
   }
   const dashboard = response.data
   
@@ -175,49 +194,55 @@ const setupSyntheticMonitoringDashboard = async (dashboardName, folderId) => {
   const slug = `synthetic-monitoring-` + dashboardName.split('-')[1]
   var url = `${state.get('plugins.grafana-cloud.grafana.url')}/api/dashboards/import`
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: url,
-      headers: constants.grafanaApiHeaders(),
-      data: {
-      	dashboard: dashboard,
-        folderId: folderId,
-        overwrite: true,
-        inputs: [{
-      		name: 'DS_SM_METRICS',
-      		type: 'datasource',
-      		pluginId: 'prometheus',
-      		value: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-prom`
-      	}, {
-      		name: 'DS_SM_LOGS',
-      		type: 'datasource',
-      		pluginId: 'loki',
-      		value: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-logs`
-      	}, {
-      		name: 'DS_SM_SM',
-      		type: 'datasource',
-      		pluginId: 'synthetic-monitoring-datasource',
-      		value: 'Synthetic Monitoring'
-      	}]
-      }
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200) {
-    logger.info('...done.')
-    return {
-      title: dashboard.title,
-      uid: dashboard.uid,
-      json: `${dashboardName}.json`,
-      version: dashboard.version,
-      latestVersion: dashboard.version
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'post',
+        url: url,
+        headers: constants.grafanaApiHeaders(),
+        data: {
+          dashboard: dashboard,
+          folderId: folderId,
+          overwrite: true,
+          inputs: [{
+            name: 'DS_SM_METRICS',
+            type: 'datasource',
+            pluginId: 'prometheus',
+            value: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-prom`
+          }, {
+            name: 'DS_SM_LOGS',
+            type: 'datasource',
+            pluginId: 'loki',
+            value: `grafanacloud-${state.get('plugins.grafana-cloud.stack_slug')}-logs`
+          }, {
+            name: 'DS_SM_SM',
+            type: 'datasource',
+            pluginId: 'synthetic-monitoring-datasource',
+            value: 'Synthetic Monitoring'
+          }]
+        }
+      })
+    } catch (err) {
+      logger.error(err)
+      return
     }
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
+    if (response.status == 503 && response.data.code == 'Loading') {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200) {
+      logger.info('...done.')
+      return {
+        title: dashboard.title,
+        uid: dashboard.uid,
+        json: `${dashboardName}.json`,
+        version: dashboard.version,
+        latestVersion: dashboard.version
+      }
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+      return
+    }
   }
 }
 
@@ -239,47 +264,60 @@ const setupSyntheticMonitoringFolder = async () => {
   
   // Check if the folder exists
   var response
-  try {
-    response = await utils.http({
-      method: 'get',
-      url: url,
-      headers: constants.grafanaApiHeaders()
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200 && response.data) {
-    // Return the id of the "Synthetic Monitoring" folder if it exists
-    for (var i in response.data)
-      if (response.data[i].title == 'Synthetic Monitoring')
-        return response.data[i].id
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
-    return
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'get',
+        url: url,
+        headers: constants.grafanaApiHeaders()
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    if (response.status == 503 && response.data.code == 'Loading') {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200 && response.data) {
+      // Return the id of the "Synthetic Monitoring" folder if it exists
+      for (var i in response.data)
+        if (response.data[i].title == 'Synthetic Monitoring')
+          return response.data[i].id
+      break
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+      return
+    }
   }
   
   // Create the folder
   var response
-  try {
-    response = await utils.http({
-      method: 'post',
-      url: url,
-      headers: constants.grafanaApiHeaders(),
-      data: {
-        title: 'Synthetic Monitoring'
-      }
-    })
-  } catch (err) {
-    logger.error(err)
-    return
-  }
-  if (response.status == 200 && response.data) {
-    logger.info('...done.')
-  } else {
-    logger.error('...failure:')
-    logger.error(response.data)
+  while (true) {
+    try {
+      response = await utils.http({
+        method: 'post',
+        url: url,
+        headers: constants.grafanaApiHeaders(),
+        data: {
+          title: 'Synthetic Monitoring'
+        }
+      })
+    } catch (err) {
+      logger.error(err)
+      return
+    }
+    if (response.status == 503 && response.data.code == 'Loading') {
+      await utils.sleep(1000)
+      continue
+    } else if (response.status == 200 && response.data) {
+      logger.info('...done.')
+      break
+    } else {
+      logger.error('...failure:')
+      logger.error(response.data)
+      break
+    }
   }
   
   // Return the id of the "Synthetic Monitoring" folder.
@@ -369,8 +407,15 @@ const setupKubernetesIntegration = async () => {
     try {
       response = await utils.http({
         method: 'post',
-        url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/install`,
-        headers: constants.grafanaApiHeaders()
+        url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/v2/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/install`,
+        headers: constants.grafanaApiHeaders(),
+        data: {
+          configuration: {
+            configurable_logs: {
+              logs_disabled: false
+            }
+          }
+        }
       })
     } catch (err) {
       logger.error(err)
@@ -384,7 +429,7 @@ const setupKubernetesIntegration = async () => {
       try {
         response = await utils.http({
           method: 'get',
-          url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/`,
+          url: `${state.get('plugins.grafana-cloud.grafana.url')}/api/plugin-proxy/grafana-easystart-app/int-api/v2/stacks/${state.get('plugins.grafana-cloud.stack_id')}/integrations/kubernetes/`,
           headers: constants.grafanaApiHeaders()
         })
       } catch (err) {
@@ -507,7 +552,7 @@ module.exports = async () => {
   }
   
   // Setup Kubernetes integration
-  //await setupKubernetesIntegration() // TODO: This won't start until the user authenticates in the UI
+  await setupKubernetesIntegration()
   
   // Setup synthetic monitoring
   await setupSyntheticMonitoring()

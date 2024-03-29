@@ -2,38 +2,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grafana-agent
+  name: grafana-agent-pyroscope
   labels:
-    app: grafana-agent
-    name: grafana-agent
+    app: grafana-agent-pyroscope
+    name: grafana-agent-pyroscope
 spec:
   minReadySeconds: 10
-  replicas: 3
+  replicas: 1
   revisionHistoryLimit: 0
   selector:
     matchLabels:
-      app: grafana-agent
+      app: grafana-agent-pyroscope
   template:
     metadata:
       labels:
-        app: grafana-agent
-        name: grafana-agent
+        app: grafana-agent-pyroscope
+        name: grafana-agent-pyroscope
     spec:
-      serviceAccountName: grafana-agent
+      serviceAccountName: grafana-agent-pyroscope
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirstWithHostNet
       containers:
-      - name: grafana-agent
-        image: microbs-grafana-agent
+      - name: grafana-agent-pyroscope
+        image: microbs-grafana-agent-pyroscope
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
           runAsUser: 0
         args: [
-          "-config.expand-env",
-          "--config.enable-read-api",
-          "--config.file=/etc/agent/agent.yaml",
-          "--metrics.wal-directory=/etc/agent/data"
+          "run",
+          "/etc/agent/agent.river"
         ]
         resources:
           limits:
@@ -46,6 +44,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: AGENT_MODE
+          value: flow
         envFrom:
         - secretRef:
            name: microbs-secrets
@@ -76,13 +76,13 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: grafana-agent
+  name: grafana-agent-pyroscope
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: grafana-agent
+  name: grafana-agent-pyroscope
 rules:
 - apiGroups:
   - ""
@@ -104,61 +104,28 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: grafana-agent
+  name: grafana-agent-pyroscope
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: grafana-agent
+  name: grafana-agent-pyroscope
 subjects:
 - kind: ServiceAccount
-  name: grafana-agent
+  name: grafana-agent-pyroscope
   namespace: default
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: grafana-agent
+  name: grafana-agent-pyroscope
   namespace: default
   labels:
-    app: grafana-agent
-    name: grafana-agent
+    app: grafana-agent-pyroscope
+    name: grafana-agent-pyroscope
 spec:
   ports:
   - port: 12345
     targetPort: 12345
     name: api
   selector:
-    name: grafana-agent
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: otel-collector
-  namespace: default
-  labels:
-    app: grafana-agent
-    name: otel-collector
-spec:
-  ports:
-  - port: 4317
-    targetPort: 4317
-    name: grpc
-  selector:
-    app: grafana-agent
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana-agent-headless
-  namespace: default
-  labels:
-    app: grafana-agent
-    name: grafana-agent-headless
-spec:
-  clusterIP: None
-  ports:
-  - port: 4318
-    targetPort: 4318
-    name: grpc
-  selector:
-    app: grafana-agent
+    name: grafana-agent-pyroscope

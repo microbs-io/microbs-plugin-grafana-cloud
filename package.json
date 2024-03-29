@@ -1,6 +1,6 @@
 {
   "name": "@microbs.io/plugin-grafana-cloud",
-  "version": "0.2.5",
+  "version": "0.3.0-dev",
   "description": "microbs plugin - grafana-cloud",
   "license": "Apache-2.0",
   "url": "https://microbs.io/docs/plugins/observability/grafana-cloud/",

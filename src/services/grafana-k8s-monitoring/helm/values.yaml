@@ -1,0 +1,61 @@
+cluster:
+  name: microbs
+externalServices:
+  prometheus:
+    secret:
+      create: false
+      name: microbs-secrets
+      namespace: default
+    hostKey: PLUGINS_GRAFANA_CLOUD_PROMETHEUS_URL
+    basicAuth:
+      usernameKey: PLUGINS_GRAFANA_CLOUD_PROMETHEUS_USERNAME
+      passwordKey: PLUGINS_GRAFANA_CLOUD_API_KEY
+  loki:
+    secret:
+      create: false
+      name: microbs-secrets
+      namespace: default
+    hostKey: PLUGINS_GRAFANA_CLOUD_LOKI_URL
+    basicAuth:
+      usernameKey: PLUGINS_GRAFANA_CLOUD_LOKI_USERNAME
+      passwordKey: PLUGINS_GRAFANA_CLOUD_API_KEY
+metrics:
+  enabled: true
+  cost:
+    enabled: true
+  node-exporter:
+    enabled: true
+logs:
+  enabled: true
+  pod_logs:
+    enabled: true
+  cluster_events:
+    enabled: true
+traces:
+  enabled: false
+receivers:
+  grpc:
+    enabled: false
+  http:
+    enabled: false
+  zipkin:
+    enabled: false
+opencost:
+  enabled: true
+  opencost:
+    exporter:
+      defaultClusterId: microbs
+    prometheus:
+      secret_name: microbs-secrets
+      username_key: PLUGINS_GRAFANA_CLOUD_PROMETHEUS_USERNAME
+      password_key: PLUGINS_GRAFANA_CLOUD_API_KEY
+      external:
+        url: https://prometheus-us-central1.grafana.net/api/prom
+kube-state-metrics:
+  enabled: true
+prometheus-node-exporter:
+  enabled: true
+prometheus-operator-crds:
+  enabled: true
+grafana-agent: {}
+grafana-agent-logs: {}

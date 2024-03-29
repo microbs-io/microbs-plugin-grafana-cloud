@@ -15,10 +15,28 @@ profiles:
 - name: main
   build:
     artifacts:
-    - image: microbs-grafana-agent
-      context: ./services/grafana-agent
+    - image: microbs-grafana-synthetic-monitoring-agent
+      context: ./services/grafana-synthetic-monitoring-agent
+    #- image: microbs-grafana-agent-pyroscope
+    #  context: ./services/grafana-agent-pyroscope
   deploy:
+    helm:
+      flags:
+        upgrade: ["--atomic"]
+      releases:
+      - name: grafana-k8s-monitoring
+        repo: https://grafana.github.io/helm-charts
+        remoteChart: k8s-monitoring
+        valuesFiles:
+        - ./services/grafana-k8s-monitoring/helm/values.yaml
+        upgradeOnChange: true
+      - name: grafana-agent
+        repo: https://grafana.github.io/helm-charts
+        remoteChart: grafana-agent
+        valuesFiles:
+        - ./services/grafana-agent/helm/values.yaml
+        upgradeOnChange: true
     kubectl:
       manifests:
-      - ./services/grafana-agent/k8s/*.yaml
-      - ./services/synthetics-agent/k8s/*.yaml
+      #- ./services/grafana-agent-pyroscope/k8s/*.yaml
+      - ./services/grafana-synthetic-monitoring-agent/k8s/*.yaml

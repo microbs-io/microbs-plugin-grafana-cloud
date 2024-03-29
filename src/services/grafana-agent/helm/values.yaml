@@ -1,0 +1,84 @@
+agent:
+  envFrom:
+  - secretRef:
+     name: microbs-secrets
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  mode: flow
+  configMap:
+    create: true
+    content: |-
+      otelcol.receiver.otlp "default" {
+        grpc {}
+        http {}
+        output {
+          traces  = [otelcol.processor.batch.default.input]
+          metrics = [otelcol.processor.batch.default.input]
+          logs    = [otelcol.processor.batch.default.input]
+        }
+      }
+
+      otelcol.processor.batch "default" {
+        output {
+          traces  = [otelcol.exporter.otlp.default.input]
+          metrics = [otelcol.exporter.prometheus.default.input]
+          logs    = [otelcol.exporter.loki.default.input]
+        }
+      }
+
+      otelcol.exporter.loki "default" {
+      	forward_to = [loki.process.default.receiver]
+      }
+
+      otelcol.exporter.prometheus "default" {
+      	forward_to = [prometheus.remote_write.default.receiver]
+      }
+
+      otelcol.exporter.otlp "default" {
+      	client {
+          auth = otelcol.auth.basic.default.handler
+      		endpoint = join([ env("PLUGINS_GRAFANA_CLOUD_TEMPO_URL"), ":443" ], "")
+      	}
+      }
+
+      otelcol.auth.basic "default" {
+      	username = env("PLUGINS_GRAFANA_CLOUD_TEMPO_USERNAME")
+      	password = env("PLUGINS_GRAFANA_CLOUD_API_KEY")
+      }
+
+      prometheus.remote_write "default" {
+      	endpoint {
+      		url = env("PLUGINS_GRAFANA_CLOUD_PROMETHEUS_ENDPOINT")
+      		basic_auth {
+      			username = env("PLUGINS_GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+      			password = env("PLUGINS_GRAFANA_CLOUD_API_KEY")
+      		}
+      	}
+      }
+
+      loki.process "default" {
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+      	endpoint {
+      		url = join([ env("PLUGINS_GRAFANA_CLOUD_LOKI_URL"), "/loki/api/v1/push" ], "")
+      		basic_auth {
+      			username = env("PLUGINS_GRAFANA_CLOUD_LOKI_USERNAME")
+      			password = env("PLUGINS_GRAFANA_CLOUD_API_KEY")
+      		}
+      	}
+      }
+  clustering:
+    enabled: false
+  configReloader:
+    enabled: false
+serviceMonitor:
+  enabled: false

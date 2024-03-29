@@ -1,0 +1,67 @@
+logging {
+  level = "debug"
+}
+
+discovery.kubernetes "pyroscope_kubernetes" {
+  role = "service"
+  selectors {
+    role = "service"
+    label = "data=pprof"
+  }
+}
+
+discovery.relabel "pyroscope_relabel_container" {
+  rule {
+    action = "labelmap"
+    regex = "__meta_kubernetes_service_label_(.+)"
+  }
+  rule {
+    action = "replace"
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label = "namespace"
+  }
+  rule {
+    action = "replace"
+    source_labels = ["__meta_kubernetes_service_name"]
+    target_label = "service"
+  }
+  rule {
+    separator = "/"
+    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_label_name"]
+    target_label = "job"
+  }
+  targets = concat(discovery.kubernetes.pyroscope_kubernetes.targets)
+}
+
+pyroscope.write "default" {
+  endpoint {
+    url = "https://profiles-prod-003.grafana.net" // env("PLUGINS_GRAFANA_CLOUD_PROMETHEUS_ENDPOINT")
+    basic_auth {
+      username = "671129" // env("PLUGINS_GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+      password = env("PLUGINS_GRAFANA_CLOUD_API_KEY")
+    }
+  }
+  external_labels = {
+    "cluster" = "microbs",
+  }
+}
+
+pyroscope.scrape "default" {
+  targets = concat(discovery.relabel.pyroscope_relabel_container.output)
+  forward_to = [pyroscope.write.default.receiver]
+  profiling_config {
+    profile.block {
+      enabled = false
+    }
+    profile.goroutine {
+      enabled = false
+    }
+    profile.memory {
+      enabled = true
+      path = "/debug/pprof/heap"
+    }
+    profile.mutex {
+      enabled = false
+    }
+  }
+}
